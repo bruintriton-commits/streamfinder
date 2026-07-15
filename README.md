@@ -2,7 +2,19 @@
 
 Search any movie or TV show and see where it's streaming — on Netflix, Max, Prime Video, Disney+ and every other major service, in ~100 countries. Save titles to a watchlist that always shows current availability.
 
-## Running it
+**Live app: https://bruintriton-commits.github.io/streamfinder/**
+
+## Deploying updates
+
+After changing the code, publish the new version with:
+
+```
+npm run deploy
+```
+
+(builds and pushes to the `gh-pages` branch; the live URL updates in a minute or two)
+
+## Running it locally
 
 ```
 cd C:\Users\lscot\Claude\StreamFinder
