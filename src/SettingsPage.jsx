@@ -1,9 +1,23 @@
 import { useState } from 'react'
-import { getApiKey, testApiKey } from './api.js'
+import { getApiKey, testApiKey, getOmdbKey, setOmdbKey, testOmdbKey } from './api.js'
 
 export default function SettingsPage({ hasKey, onKeySaved }) {
   const [key, setKey] = useState(getApiKey)
   const [status, setStatus] = useState('idle') // idle | testing | ok | bad
+  const [omdb, setOmdb] = useState(getOmdbKey)
+  const [omdbStatus, setOmdbStatus] = useState('idle') // idle | testing | ok | bad | cleared
+
+  async function saveOmdb() {
+    if (!omdb.trim()) {
+      setOmdbKey('')
+      setOmdbStatus('cleared')
+      return
+    }
+    setOmdbStatus('testing')
+    const ok = await testOmdbKey(omdb)
+    if (ok) setOmdbKey(omdb)
+    setOmdbStatus(ok ? 'ok' : 'bad')
+  }
 
   async function save() {
     if (!key.trim()) return
@@ -60,6 +74,39 @@ export default function SettingsPage({ hasKey, onKeySaved }) {
         Your key is stored only in this browser (localStorage) and is sent only to TMDB. Availability data is provided
         by JustWatch via TMDB.
       </p>
+
+      <h3 className="settings-divider">Optional: Rotten Tomatoes &amp; IMDb scores</h3>
+      <p>
+        To show 🍅 Rotten Tomatoes and IMDb ratings in title details, add a free <strong>OMDb</strong> key: request it
+        at{' '}
+        <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noreferrer">
+          omdbapi.com/apikey.aspx
+        </a>{' '}
+        (choose the FREE tier — the key arrives by email, click the activation link in that email first).
+      </p>
+      <div className="key-row">
+        <input
+          className="search-input"
+          type="text"
+          placeholder="Paste your OMDb API key here (optional)"
+          value={omdb}
+          onChange={(e) => {
+            setOmdb(e.target.value)
+            setOmdbStatus('idle')
+          }}
+          onKeyDown={(e) => e.key === 'Enter' && saveOmdb()}
+        />
+        <button className="btn" onClick={saveOmdb} disabled={omdbStatus === 'testing'}>
+          {omdbStatus === 'testing' ? 'Testing…' : 'Save'}
+        </button>
+      </div>
+      {omdbStatus === 'ok' && <p className="hint success">✓ Key works! Ratings will show in title details.</p>}
+      {omdbStatus === 'cleared' && <p className="hint">OMDb key removed — ratings hidden.</p>}
+      {omdbStatus === 'bad' && (
+        <p className="hint error">
+          That key didn&apos;t work — make sure you clicked the activation link in OMDb&apos;s email.
+        </p>
+      )}
     </div>
   )
 }

@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { searchTitles } from './api.js'
+import { searchTitles, getTrending } from './api.js'
 import TitleCard from './TitleCard.jsx'
 
 export default function SearchPage({ watchlist, onToggleWatchlist, onSelect }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
+  const [trending, setTrending] = useState([])
   const [status, setStatus] = useState('idle') // idle | loading | done | error
   const timer = useRef(null)
+
+  useEffect(() => {
+    getTrending().then(setTrending).catch(() => {})
+  }, [])
 
   useEffect(() => {
     clearTimeout(timer.current)
@@ -52,8 +57,10 @@ export default function SearchPage({ watchlist, onToggleWatchlist, onSelect }) {
       {status === 'error' && <p className="hint error">Search failed — check your API key in Settings.</p>}
       {status === 'done' && results.length === 0 && <p className="hint">No results for “{query.trim()}”.</p>}
 
+      {status === 'idle' && trending.length > 0 && <h3 className="section-title">🔥 Trending this week</h3>}
+
       <div className="grid">
-        {results.map((item) => (
+        {(status === 'idle' ? trending : results).map((item) => (
           <TitleCard
             key={`${item.mediaType}-${item.id}`}
             item={item}

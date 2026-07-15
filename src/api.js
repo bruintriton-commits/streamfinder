@@ -47,21 +47,29 @@ export async function testApiKey(key) {
   }
 }
 
-export async function searchTitles(query) {
-  const data = await tmdb('/search/multi', { query, include_adult: 'false' })
-  return (data.results || [])
+function mapTitles(results) {
+  return (results || [])
     .filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
     .map((r) => ({
       id: r.id,
       mediaType: r.media_type,
       title: r.media_type === 'movie' ? r.title : r.name,
-      year: (r.media_type === 'movie' ? r.release_date : r.first_air_date || '').slice(0, 4),
+      year: ((r.media_type === 'movie' ? r.release_date : r.first_air_date) || '').slice(0, 4),
       poster: r.poster_path,
       overview: r.overview,
       rating: r.vote_average,
       popularity: r.popularity,
     }))
-    .sort((a, b) => b.popularity - a.popularity)
+}
+
+export async function searchTitles(query) {
+  const data = await tmdb('/search/multi', { query, include_adult: 'false' })
+  return mapTitles(data.results).sort((a, b) => b.popularity - a.popularity)
+}
+
+export async function getTrending() {
+  const data = await tmdb('/trending/all/week')
+  return mapTitles(data.results)
 }
 
 const providerCache = new Map()
@@ -85,6 +93,51 @@ export async function getRegions() {
     .sort((a, b) => a.name.localeCompare(b.name))
   localStorage.setItem('sf_regions', JSON.stringify(regions))
   return regions
+}
+
+export function getOmdbKey() {
+  return localStorage.getItem('sf_omdb_key') || ''
+}
+
+export function setOmdbKey(key) {
+  localStorage.setItem('sf_omdb_key', key.trim())
+}
+
+const ratingsCache = new Map()
+
+// Rotten Tomatoes + IMDb scores via OMDb (optional — needs its own free key).
+// Returns { rt, imdb } or null when no key, no IMDb id, or no data.
+export async function getRatings(mediaType, id) {
+  const omdbKey = getOmdbKey()
+  if (!omdbKey) return null
+  const cacheKey = `${mediaType}:${id}`
+  if (ratingsCache.has(cacheKey)) return ratingsCache.get(cacheKey)
+
+  let result = null
+  try {
+    const ext = await tmdb(`/${mediaType}/${id}/external_ids`)
+    if (ext.imdb_id) {
+      const res = await fetch(`https://www.omdbapi.com/?apikey=${omdbKey}&i=${ext.imdb_id}`)
+      const data = await res.json()
+      const rt = data.Ratings?.find((r) => r.Source === 'Rotten Tomatoes')?.Value || null
+      const imdb = data.imdbRating && data.imdbRating !== 'N/A' ? data.imdbRating : null
+      if (rt || imdb) result = { rt, imdb }
+    }
+  } catch {
+    return null
+  }
+  ratingsCache.set(cacheKey, result)
+  return result
+}
+
+export async function testOmdbKey(key) {
+  try {
+    const res = await fetch(`https://www.omdbapi.com/?apikey=${key.trim()}&i=tt0111161`)
+    const data = await res.json()
+    return data.Response === 'True'
+  } catch {
+    return false
+  }
 }
 
 export function imgUrl(path, size = 'w185') {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getProviders, imgUrl, countryName } from './api.js'
+import { getProviders, getRatings, imgUrl, countryName } from './api.js'
 import {
   isInWatchlist,
   getHideAccountTied,
@@ -58,11 +58,16 @@ export default function DetailsModal({ item, region, watchlist, onToggleWatchlis
     setIncludeFreeState(on)
   }
 
+  const [ratings, setRatings] = useState(null)
+
   useEffect(() => {
     let cancelled = false
     getProviders(item.mediaType, item.id)
       .then((p) => !cancelled && setProviders(p))
       .catch(() => !cancelled && setError(true))
+    getRatings(item.mediaType, item.id)
+      .then((r) => !cancelled && setRatings(r))
+      .catch(() => {})
     return () => {
       cancelled = true
     }
@@ -122,7 +127,9 @@ export default function DetailsModal({ item, region, watchlist, onToggleWatchlis
             </h2>
             <div className="modal-meta">
               <span className="type-badge inline">{item.mediaType === 'tv' ? 'TV show' : 'Movie'}</span>
-              {item.rating > 0 && <span>⭐ {item.rating.toFixed(1)}</span>}
+              {ratings?.rt && <span title="Rotten Tomatoes">🍅 {ratings.rt}</span>}
+              {ratings?.imdb && <span title="IMDb rating">IMDb {ratings.imdb}</span>}
+              {item.rating > 0 && <span title="TMDB user score">⭐ {item.rating.toFixed(1)}</span>}
             </div>
             {item.overview && <p className="overview">{item.overview}</p>}
             <button className={saved ? 'btn saved' : 'btn'} onClick={() => onToggleWatchlist(item)}>
